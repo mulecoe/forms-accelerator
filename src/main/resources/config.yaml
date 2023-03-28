@@ -1,0 +1,22 @@
+getformpath: "/api/nous/mulesoftforms/get"
+submitformpath: "/api/nous/mulesoftforms/submit"
+formbaseurlcloudhub: "http://mulesoft-forms.sg-s1.cloudhub.io/api/nous/mulesoftforms/get"
+formbaseurlsubmitcloudhub: "http://mulesoft-forms.sg-s1.cloudhub.io/api/nous/mulesoftforms/submit"
+expirySeconds: "172800"
+
+http:
+  port: "8081"
+  
+mongodb:
+  connectionString: "mongodb+srv://prakashsr:rqEICMCTPE5y0P4M@fiscluster.ulxri.mongodb.net/generic-forms-accelerator?retryWrites=true&w=majority"
+  formdataCollectionName : "forms-data"
+  
+form:
+  envelopid: "af49964b-13b0-4207-afe3-baef7be8efb4"
+  lenEnvId: "c5611c4c-efb1-4897-97f7-7994cc13e9bc"
+  
+sysApi:
+  sfHost: "customeronboarding-salesforce-api.sg-s1.cloudhub.io"
+  getLeads: "/customer/leads/{lead-id}"
+  lenHost: "salesforce-lending-api.sg-s1.cloudhub.io"
+  lenLead: "/lending/leads/{lead-id}"

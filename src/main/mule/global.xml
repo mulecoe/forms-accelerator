@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:api-gateway="http://www.mulesoft.org/schema/mule/api-gateway"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce"
+	xmlns:mongo="http://www.mulesoft.org/schema/mule/mongo"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/mongo http://www.mulesoft.org/schema/mule/mongo/current/mule-mongo.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd
+http://www.mulesoft.org/schema/mule/api-gateway http://www.mulesoft.org/schema/mule/api-gateway/current/mule-api-gateway.xsd">
+	<mongo:config name="MongoDB_Config" doc:name="MongoDB Config" doc:id="626f5942-a82a-407a-94d9-7b7e7bbb441e" >
+		<mongo:connection-string-connection connectionString="${mongodb.connectionString}"/>
+	</mongo:config>
+	<salesforce:sfdc-config name="Salesforce_Config" doc:name="Salesforce Config" doc:id="51136e45-b18c-4c7e-b7a1-9de905436268" >
+		<salesforce:basic-connection username="nousinfo2022@gmail.com" password="Nous@12345" securityToken="cumISqX1KcsqAnPuGsiOcSvk" />
+	</salesforce:sfdc-config>
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="62f7095f-9e0f-4104-884a-bfab375d680a">
+		<http:listener-connection host="0.0.0.0" port="${http.port}" />
+	</http:listener-config>
+	<configuration-properties doc:name="Configuration properties" doc:id="52be7296-38c4-40bc-8fa7-6525ba7043e6" file="config.yaml" />
+	<http:request-config name="request_api-config" doc:name="HTTP Request configuration" doc:id="fc961bf0-790e-47d4-ae84-5cf1cdf347a6" >
+		<http:request-connection host="#[vars.htmlDocument.host]" />
+	</http:request-config>
+	<http:request-config name="HTTP_Request_getLeads" doc:name="HTTP Request configuration" doc:id="1b66eec6-fb04-4ac9-b423-39fa4e09d79d" basePath="/api" >
+		<http:request-connection host="${sysApi.sfHost}" />
+	</http:request-config>
+	<http:request-config name="lending-leads" doc:name="HTTP Request configuration" doc:id="2375887a-c964-4dde-b010-7a5809aa6f44" basePath="/api" >
+		<http:request-connection host="${sysApi.lenHost}" />
+	</http:request-config>
+	
+</mule>

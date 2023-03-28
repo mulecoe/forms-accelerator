@@ -1,0 +1,4 @@
+%dw 2.0
+
+type auto_4003096a_688a_4c92_891d_9f0875f9476b_Output_Variables_formdata = Any
+

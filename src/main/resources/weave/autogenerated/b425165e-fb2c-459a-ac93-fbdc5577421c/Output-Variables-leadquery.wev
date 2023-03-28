@@ -1,0 +1,4 @@
+%dw 2.0
+
+type auto_b425165e_fb2c_459a_ac93_fbdc5577421c_Output_Variables_leadquery = Any
+

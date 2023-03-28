@@ -1,0 +1,503 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce"
+	xmlns:mongo="http://www.mulesoft.org/schema/mule/mongo"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/mongo http://www.mulesoft.org/schema/mule/mongo/current/mule-mongo.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd">
+	<flow name="mulesoft-formsFlow" doc:id="4003096a-688a-4c92-891d-9f0875f9476b" >
+		<logger level="INFO" doc:name="Logger" doc:id="3603d304-00ca-4925-a1a8-3ffdef106ac9" message="#[attributes.queryParams]"/>
+		<ee:transform doc:name="save payload to formdata" doc:id="a7e3bbd6-5ef4-477b-b81f-ab5f216125b7" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="formdata" ><![CDATA[%dw 2.0
+import * from dw::core::Strings
+import * from dw::core::Binaries
+output application/java
+---
+(payload.parts pluck($)) map() -> {
+
+    (if ( $.headers."Content-Disposition".filename == null ) ($.headers."Content-Disposition".name) : $.content  else files:({
+
+        "fileName" : $.headers."Content-Disposition".filename substringBefore  ".",
+
+        "extension" : $.headers."Content-Disposition".filename substringAfter  ".",
+
+    
+    "mimetype" : $.headers."Content-Type",
+
+        "content" : toBase64($.content)
+
+    }) )
+}
+]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<ee:transform doc:name="prepare for decrypt" doc:id="c6290b7f-d1fd-404c-8664-087ba718099a" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+{
+	uuid : attributes.queryParams.formid
+}]]></ee:set-payload>
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="formID" ><![CDATA[%dw 2.0
+output application/java
+---
+attributes.queryParams.formid]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<flow-ref doc:name="decrypt - form idf" doc:id="da265f55-0353-40c5-ab86-31fe4c71f6ff" name="pgp-decryption-flow"/>
+		<ee:transform doc:name="decryptedFormID" doc:id="a5d8617e-7df5-4b1e-be83-b673fe9a61de" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="envelopid" ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"envelop-id" : payload.'envelop-id'
+}]]></ee:set-variable>
+				<ee:set-variable variableName="decryotedFormId" ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<flow-ref doc:name="fetch-mongodb-documents" doc:id="be73b319-25b5-48c2-bcfb-12fcf380a8c1" name="fetch-mongodb-documents" target="htmlDocument" />
+		<set-variable value="#[%dw 2.0&#10;output application/java&#10;---&#10; ((now() as DateTime - (vars.decryotedFormId.createdDate as DateTime)) as Number {unit: &quot;seconds&quot;}) &gt; '${expirySeconds}' as Number]" doc:name="expired" doc:id="f852115f-a3c9-4570-a3f3-868988256773" variableName="expired"/>
+		<choice doc:name="Choice" doc:id="941c6332-f3fe-4b76-93d8-5f3f38935f7e" >
+			<when expression="#[vars.expired == true]">
+				<raise-error doc:name="Raise error" doc:id="ab0692f1-8b87-4fe8-805f-9d92e3de00c1" type="ANY" description="Link has expired. Please contact custome support."/>
+			</when>
+			<otherwise >
+				<choice doc:name="Choice" doc:id="0b1ef6c7-b84d-426a-a61a-f9a5f6a22bdf">
+			<when expression='#[vars.decryotedFormId.tokentype == "formsubmissionlink"]'>
+				<ee:transform doc:name="vars.formdata to payload" doc:id="bff91b1b-5077-494d-8c36-71fcfdd3504d">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+vars.formdata]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+						<ee:transform doc:name="convert payload to object" doc:id="5590eb95-3a0a-4b92-a919-c845e74e66f4">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+import * from dw::core::Binaries
+output application/json
+var fl = "___attachments" : payload..files
+---
+{
+    "instance_id" : uuid(),
+    "formId" : vars.decryotedFormId,
+    "payload" : ((payload filter($.files == null)) reduce ((item, accumulator) -> accumulator ++ item)) ++ fl
+} 
+]]></ee:set-payload>
+			</ee:message>
+							<ee:variables >
+								<ee:set-variable variableName="collectionName" ><![CDATA[%dw 2.0
+output application/json
+---
+"html-formData"]]></ee:set-variable>
+							</ee:variables>
+		</ee:transform>
+						<flow-ref doc:name="insert-formsrecordSub_Flow" doc:id="fec1d4f3-7544-4bb4-b636-2d56a625b913" name="insert-formsrecordSub_Flow"/>
+						<set-variable value="#[payload]" doc:name="vars.form-data" doc:id="8f0b19b6-05f2-4986-921e-479396b4c55c" variableName="form-data"/>
+						<http:request method="POST" doc:name="request api" doc:id="924ab248-4af5-4641-8b30-6c4e225cf75f" config-ref="request_api-config" path="#[vars.htmlDocument.path]">
+							<http:body><![CDATA[#[vars.'form-data']]]></http:body>
+						</http:request>
+<!-- [STUDIO:"Logger"]						<logger level="INFO" doc:name="Logger" doc:id="2aed0cde-60bb-4ba9-8350-66032f0c6728" message="#[payload]"/> [STUDIO] -->
+<!-- [STUDIO:"instance_id"]						<ee:transform doc:name="instance_id" doc:id="4c0fff6a-4030-4c0c-9c84-e72c60967a60" >
+							<ee:message >
+								<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+&#45;&#45;-
+vars.'form-data'.instance_id]]></ee:set-payload>
+							</ee:message>
+						</ee:transform> [STUDIO] -->
+<!-- [STUDIO:"landing page"]						<parse-template doc:name="landing page" doc:id="c064519d-25ad-43de-a397-47218b5733ef" location="webapp\generic-form-response.html" outputMimeType="text/html"/> [STUDIO] -->
+			</when>
+			<otherwise>
+				<raise-error doc:name="Raise error" doc:id="63cec9ee-34d4-442e-9563-33564ccac79e" type="ANY" description="Link has expired or has been corrupted. Please contact the customer support." />
+			</otherwise>
+		</choice>
+			</otherwise>
+		</choice>
+	</flow>
+	<flow name="get-form" doc:id="b425165e-fb2c-459a-ac93-fbdc5577421c" >
+		<choice doc:name="formId exists check" doc:id="930dbae4-7178-4c67-b088-5ae29d571397" >
+			<when expression="#[attributes.queryParams.formid != null]">
+				<set-variable value='#[attributes.scheme ++ "://" ++ attributes.headers.host]' doc:name="vars.host" doc:id="bcc46c0b-acf9-4a94-866a-7d5a95fbcd24" variableName="host"/>
+				<logger level="INFO" doc:name="host" doc:id="252c1f11-17ae-401a-afbb-81496f52a165" message="#[vars.host]" />
+				<ee:transform doc:name="prepare input for decryption" doc:id="adfc7354-3069-43c7-ad20-516fb7da9558">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+{
+	uuid : attributes.queryParams.formid
+}]]></ee:set-payload>
+					</ee:message>
+					<ee:variables >
+					</ee:variables>
+				</ee:transform>
+				<flow-ref doc:name="decrypt - get form idf payload" doc:id="1216ec54-f450-4115-af56-cf8d28cb14e0" name="pgp-decryption-flow"/>
+				<ee:transform doc:name="vars.envelop-id" doc:id="5cea1589-a348-4742-a54b-80e518ac524f">
+					<ee:message>
+					</ee:message>
+					<ee:variables >
+						<ee:set-variable variableName="decryptedFormID" ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-variable>
+						<ee:set-variable variableName="envelopid" ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"envelop-id" : payload.'envelop-id'
+}]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+				<flow-ref doc:name="fetch-mongodb-documents" doc:id="95ae6421-1ac2-4e94-a9e4-62c8b634e2d0" name="fetch-mongodb-documents" target="htmlDocument"/>
+				<set-variable value="#[%dw 2.0&#10;output application/java&#10;---&#10; ((now() as DateTime - (payload.createdDate as DateTime)) as Number {unit: &quot;seconds&quot;}) &gt; ('${expirySeconds}' as Number)]" doc:name="vars.expired" doc:id="c9c9ca0a-4377-4c8f-b504-a51a98d6d71e" variableName="expired"/>
+				<choice doc:name="link expiry check" doc:id="fa0b2f75-7cc9-4060-aad4-1ff61d00055c">
+					<when expression="#[vars.expired == true]">
+						<ee:transform doc:name="Transform Message" doc:id="9c690378-07e3-41e3-aff5-a2ad260bbe9e">
+							<ee:message>
+								<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"error": "Form Link has expired. Please contact customer support."
+}]]></ee:set-payload>
+							</ee:message>
+						</ee:transform>
+						<raise-error doc:name="Raise error" doc:id="14134d16-e601-4251-b74c-b1f3f8e874f1" type="ANY" description="Form Link has expired. Please contact customer support."/>
+					</when>
+					<otherwise >
+						<choice doc:name="Choice" doc:id="da888091-a4b4-4caa-9d56-0d8b658e701f">
+					<when expression='#[payload.tokentype == "getformlink"]'>
+								<choice doc:name="Choice" doc:id="92984ab7-7361-408c-bbbc-cd829627cb5f">
+									<when expression="#[%dw 2.0&#10;output application/json&#10;var env = (vars.envelopid.'envelop-id' as String)&#10;---&#10;&#10;env ~= p('form.envelopid')]">
+										<flow-ref doc:name="Flow Reference" doc:id="01c8c6bb-8727-4edf-8aa2-7834f0bfc86c" name="getLeads-byAccountID" target="leadData" />
+										<ee:transform doc:name="create new form idf payload" doc:id="ce16b189-c10e-46fa-8ca3-e85daa146b3d">
+							<ee:message>
+								<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+{
+	"uuid" : vars.decryptedFormID.uniqueid,
+	"envelop-id": vars.decryptedFormID.'envelop-id',
+	tokentype : "formsubmissionlink"
+}]]></ee:set-payload>
+							</ee:message>
+						</ee:transform>
+										<logger level="INFO" doc:name="Logger" doc:id="5f2c7c2e-bae5-444c-a674-fc4a6c53f29f" message="#[%dw 2.0&#10;output application/json&#10;---&#10;payload]"/>
+										<flow-ref doc:name="encrypt form idf payload" doc:id="24485b46-d20b-4fe9-a335-3d33ab4b4db1" name="pgp-encryption-flow" />
+										<ee:transform doc:name="create submission link" doc:id="6459cb0e-fea8-44ad-8249-fa4fa6781123">
+							<ee:message>
+								<ee:set-payload><![CDATA[%dw 2.0
+import * from dw::core::URL
+output application/java
+---
+vars.host ++ p('submitformpath') ++ '?formid=' ++ payload]]></ee:set-payload>
+							</ee:message>
+						</ee:transform>
+										<logger level="INFO" doc:name="submission link" doc:id="061eb97f-31c5-4dc8-8f1c-2237844970e3" message="#[payload]" />
+										<ee:transform doc:name="Transform Message" doc:id="d249d41b-f7bb-4a5f-86a3-6571725bdc1f">
+									<ee:message>
+										<ee:set-payload><![CDATA[%dw 2.0
+output text/plain
+import * from dw::core::Strings
+var fName = (vars.leadData.Name[0]) substringBeforeLast  " "
+var lName = (vars.leadData.Name[0]) substringAfterLast  " "
+var addStr = (vars.leadData.Address.street[0])  default ""
+var addCity = (vars.leadData.Address.city[0]) default ""
+var addCountry = (vars.leadData.Address.country[0])  default ""
+var addState = (vars.leadData.Address.state[0]) default ""
+var addCode = (vars.leadData.Address.postalCode[0])  default ""
+---
+(vars.htmlDocument.'html-file' as String replace ("#[payload]") with payload) replace  ("#[vars.leadsdata.FirstName[0]]") with fName default "" replace ("#[vars.leadsdata.LastName[0]]") with lName default "" replace  ("#[vars.leadsdata.SSN__c[0]]") with vars.leadData.SSN__c[0] default "" replace ("#[vars.leadsdata.Phone[0]]") with vars.leadData.Phone[0]  default "" replace ("#[vars.leadsdata.Email[0]]") with vars.leadData.Email[0]  default "" replace  ("#[vars.leadsdata.Address.city[0]]") with addCity default "" replace ("#[vars.leadsdata.Address.state[0]]") with addState  default "" replace ("#[vars.leadsdata.Address.country[0]]") with addCountry default "" replace ("#[vars.leadsdata.Address.postalCode[0]]") with addCode default "" replace  ("#[vars.leadsdata.Address.street[0]]") with addStr default ""]]></ee:set-payload>
+									</ee:message>
+								</ee:transform>
+									</when>
+									<when expression="#[%dw 2.0&#10;output application/json&#10;var env = (vars.envelopid.'envelop-id' as String)&#10;---&#10;&#10;env ~= p('form.lenEnvId')]">
+										<flow-ref doc:name="Flow Reference" doc:id="23bf1249-136e-46ed-9e2e-eb0a6937a26d" name="getLeands-byLeadId-lendingAcclerator" target="leadData"/>
+										<ee:transform doc:name="Transform Message" doc:id="e6c7dfa3-3769-430d-bc8a-737ba7526305" >
+											<ee:message >
+												<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+{
+	"uuid" : vars.decryptedFormID.uniqueid,
+	"envelop-id": vars.decryptedFormID.'envelop-id',
+	tokentype : "formsubmissionlink"
+}]]></ee:set-payload>
+											</ee:message>
+										</ee:transform>
+										<logger level="INFO" doc:name="Logger" doc:id="f8f51d53-92d7-4a60-a954-f1240a07a6ec" message="#[%dw 2.0&#10;output application/json&#10;---&#10;payload]" />
+										<flow-ref doc:name="encrypt form idf payload" doc:id="5bfb1d9f-9e46-4ce7-9df2-ee34590e51dd" name="pgp-encryption-flow" />
+										<ee:transform doc:name="create submission link" doc:id="e93a3896-a798-4cd1-bbaa-d6d3551fd2d6" >
+											<ee:message >
+												<ee:set-payload ><![CDATA[%dw 2.0
+import * from dw::core::URL
+output application/java
+---
+vars.host ++ p('submitformpath') ++ '?formid=' ++ payload]]></ee:set-payload>
+											</ee:message>
+										</ee:transform>
+										<logger level="INFO" doc:name="submission link" doc:id="734fd44d-391b-48b9-afaf-8bf42fc043e9" message="#[payload]" />
+										<ee:transform doc:name="Transform Message1" doc:id="6b38b4f0-5f47-48dd-9d27-170b541cd6d3" >
+											<ee:message >
+												<ee:set-payload ><![CDATA[%dw 2.0
+output text/plain
+import * from dw::core::Strings
+var fName = (vars.leadData.Name[0]) substringBeforeLast  " "
+var lName = (vars.leadData.Name[0]) substringAfterLast  " "
+var addStr = (vars.leadData.Address.street[0])  default ""
+var addCity = (vars.leadData.Address.city[0]) default ""
+var addCountry = (vars.leadData.Address.country[0])  default ""
+var addState = (vars.leadData.Address.state[0]) default ""
+var addCode = (vars.leadData.Address.postalCode[0])  default ""
+---
+(vars.htmlDocument.'html-file' as String replace ("#[payload]") with payload) replace  ("#[vars.FirstName[0]]") with fName default "" replace ("#[vars.LastName[0]]") with lName default "" replace  ("#[vars.ssn__c[0]]") with  vars.leadData.SSN__c[0] replace ("#[vars.Phone[0]]") with vars.leadData.Phone[0]  default "" replace ("#[vars.email[0]]") with vars.leadData.Email[0]  default "" replace  ("#[vars.city[0]]") with addCity default "" replace ("#[vars.state[0]]") with addState  default "" replace ("#[vars.country[0]]") with addCountry default "" replace ("#[vars.zip[0]]") with addCode default "" replace  ("#[vars.street[0]]") with addStr default ""]]></ee:set-payload>
+											</ee:message>
+										</ee:transform>
+									</when>
+									<otherwise >
+										<ee:transform doc:name="create new form idf payload" doc:id="dc5aa609-62df-4410-ac57-4c6f42c682fb" >
+											<ee:message >
+												<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+{
+	"uuid" : vars.decryptedFormID.uniqueid,
+	"envelop-id": vars.decryptedFormID.'envelop-id',
+	tokentype : "formsubmissionlink"
+}]]></ee:set-payload>
+											</ee:message>
+										</ee:transform>
+										<logger level="INFO" doc:name="Logger" doc:id="def5c9e3-6247-48cb-b0be-4824dbaa190b" message="#[%dw 2.0&#10;output application/json&#10;---&#10;payload]"/>
+										<flow-ref doc:name="Flow Reference" doc:id="abeca247-4c23-4c75-9a1b-6dcf971e621a" name="pgp-encryption-flow"/>
+										<ee:transform doc:name="create submission link" doc:id="2ee6ff53-ebd0-4662-9c3f-f9a6c89720c4" >
+											<ee:message >
+												<ee:set-payload ><![CDATA[%dw 2.0
+import * from dw::core::URL
+output application/java
+---
+vars.host ++ p('submitformpath') ++ '?formid=' ++ payload]]></ee:set-payload>
+											</ee:message>
+										</ee:transform>
+										<logger level="INFO" doc:name="submission link" doc:id="94e87081-48c9-4866-9205-0b75aa255e81" message="#[payload]" />
+										<ee:transform doc:name="parse submission link" doc:id="ff5d236e-5ccd-48fc-818f-80c24a3343e6">
+									<ee:message>
+										<ee:set-payload><![CDATA[%dw 2.0
+output text/plain
+import * from dw::core::Strings
+---
+vars.htmlDocument.'html-file' as String replace ("#[payload]") with payload]]></ee:set-payload>
+									</ee:message>
+								</ee:transform>
+									</otherwise>
+								</choice>
+								<set-payload value="#[payload]" doc:name="html form" doc:id="acfeb2bf-f81c-4415-883a-a43a7e982922" mimeType="text/html"/>
+					</when>
+					<otherwise>
+						<ee:transform doc:name="Transform Message" doc:id="6fd1a654-34da-47ba-9548-070d5e126200">
+									<ee:message>
+										<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"error":"Form link has been tampered with."
+}]]></ee:set-payload>
+									</ee:message>
+								</ee:transform>
+								<raise-error doc:name="Raise error" doc:id="a5bec897-88be-48ae-bda6-4ec38784cbaa" type="ANY" description="Form link has been tampered with." />
+					</otherwise>
+				</choice>
+					</otherwise>
+				</choice>
+			</when>
+			<otherwise >
+				<raise-error doc:name="Raise error" doc:id="f1a1241d-4476-4f44-acb6-f0746f24121c" type="ANY" description="Link expired. Please ask for a new one."/>
+			</otherwise>
+		</choice>
+	</flow>
+	<flow name="generate-form-link" doc:id="73008c42-f6c2-479c-a979-120e1a340a30" >
+		<set-variable value='#[attributes.scheme ++ "://" ++ attributes.headers.host]' doc:name="vars.host" doc:id="e6185391-b9eb-490f-8ab6-1df2200d1bb3" variableName="host"/>
+		<ee:transform doc:name="create unique form identifier payload" doc:id="b2a1298d-0435-44c3-97cf-c4c3164027ad" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+{
+	uuid : payload.uuid,
+	"envelop-id" : attributes.uriParams.'envelop-id',
+	tokentype : "getformlink"
+}]]></ee:set-payload>
+			</ee:message>
+			<ee:variables >
+			</ee:variables>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="7b4deeef-3e4e-47e2-8354-469acf579c02" message="#[%dw 2.0&#10;output application/json&#10;---&#10;payload]"/>
+		<flow-ref doc:name="get encrypted identifier" doc:id="459dd1df-8ae7-4e98-88d4-3593a200cf99" name="pgp-encryption-flow"/>
+		<logger level="INFO" doc:name="host" doc:id="28229f1b-e72a-467e-9ffa-e98bbdb83fa9" message='#[vars.host]'/>
+		<ee:transform doc:name="create new link" doc:id="b7826ba6-368c-40b0-94b3-0a5f7bcee9a5">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+import * from dw::core::URL
+output application/json
+---
+{
+	link :  vars.host ++ '${getformpath}' ++ '?formid=' ++ payload
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="formLink" doc:id="6dcf8998-4c1c-4290-82ba-107623722e87" message="#[payload]"/>
+	</flow>
+	<sub-flow name="insert-formsrecordSub_Flow" doc:id="9b9eb7a4-cc31-47fb-bc75-658e38584541" >
+		<mongo:insert-document doc:name="Insert document" doc:id="dfbc97b2-7324-4e33-a0af-76a9f0346349" config-ref="MongoDB_Config" collectionName="#[vars.collectionName]" />
+	</sub-flow>
+	<flow name="insert-html-documents-implementationFlow" doc:id="56aefe97-04d3-4a92-abfe-5fe037e83f9a" >
+		<ee:transform doc:name="multipart to Java" doc:id="5c97761c-318a-4ce3-ac1a-877e88c256c2" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+payload.parts pluck($)]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<ee:transform doc:name="conevrt to key-value" doc:id="16231440-2bfe-4f0a-8d9f-3144b8efdf46" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+import * from dw::core::Binaries
+output application/java
+var htmltemp = (((payload filter($.headers."Content-Disposition".name ~= "html-file"))) map({
+    ($.headers."Content-Disposition".name) : toBase64($.content)
+}))[0]
+---
+{
+	(payload map() -> {
+		(if ( $.headers."Content-Disposition".filename == null ) ($.headers."Content-Disposition".name) : $.content  else null)
+	}),
+    "envelop-id" : uuid()
+} ++ htmltemp]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<ee:transform doc:name="prepare mongoDB Request" doc:id="efc9ee8d-8913-4f06-b3ff-6462de422dba" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="collectionName" ><![CDATA[%dw 2.0
+output application/json
+---
+"html-templates"]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<flow-ref doc:name="insert html form" doc:id="bef019a0-1f5e-41dd-ab5d-3c1f6ddd1920" name="insert-formsrecordSub_Flow"/>
+		<ee:transform doc:name="response" doc:id="13092fdf-967e-4cac-b446-adc64603f7c7" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload filterObject($$ ~= "envelop-id")]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="fetch-mongodb-documents" doc:id="ded43db6-af7e-4d29-af15-06764ba8dd05" >
+		<mongo:find-documents collectionName="html-templates" fields="," doc:name="Find documents" doc:id="e9ded927-69ac-4a30-9fab-b161c99e2c5d" config-ref="MongoDB_Config">
+			<mongo:query ><![CDATA[#[%dw 2.0
+output application/json
+---
+vars.envelopid]]]></mongo:query>
+		</mongo:find-documents>
+		<logger level="INFO" doc:name="Logger" doc:id="153d1289-59a8-4e23-be14-c7ab4bd110a9" message="#[payload]"/>
+		<ee:transform doc:name="Transform Message" doc:id="29f99513-7a85-4763-a789-cdad9d46c2f7" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+payload map($ - "_id")]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<ee:transform doc:name="Transform Message" doc:id="883fe2da-7e69-4b09-a8f3-2a41a3516464" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+import * from dw::core::Binaries
+output application/java
+var htmlTemplate = (payload[0] filterObject ($$ ~= "html-file" )) mapObject({
+    ($$) : fromBase64($)
+})
+---
+(payload[0] filterObject !($$ ~= "html-file") ) ++ htmlTemplate]]></ee:set-payload>
+			</ee:message>
+			<ee:variables >
+			</ee:variables>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="cbd39aa0-a9d9-452a-9e6d-34565716e83c" message="#[payload]"/>
+	</flow>
+	<flow name="getLeads-byAccountID" doc:id="ae7214c8-e40d-4061-843a-e7160179e393" >
+		<logger level="INFO" doc:name="Logger" doc:id="e7d6cd32-49d9-4e78-8fd6-fc94f07b0a7f" message="#[vars.decryptedFormID]"/>
+		<ee:transform doc:name="lead-id" doc:id="a79ec80e-33f3-4ef2-8159-785e5d350b45" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+vars.decryptedFormID.uniqueid]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<http:request method="GET" doc:name="getLeadsByLeadID" doc:id="ca45af42-5dac-4484-973f-17c215727dd3" config-ref="HTTP_Request_getLeads" path="${sysApi.getLeads}">
+			<http:uri-params ><![CDATA[#[output application/java
+---
+{
+	"lead-id" : payload
+}]]]></http:uri-params>
+		</http:request>
+		<ee:transform doc:name="Transform Message" doc:id="fa8ce298-6f1b-4cb4-a94d-07d60bb5ae8c" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="getLeands-byLeadId-lendingAcclerator" doc:id="bdba56f5-269d-4a01-b36c-483bb85b7562" >
+		<logger level="INFO" doc:name="vars.decryptedFormID" doc:id="26bf106e-84ea-4113-b9a8-4e6925633e4a" message="#[vars.decryptedFormID]"/>
+		<ee:transform doc:name="lead-id" doc:id="6f984057-a486-44a5-850f-1c1a00c32d91" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+vars.decryptedFormID.uniqueid]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<http:request method="GET" doc:name="lending leads" doc:id="31819a2a-e46c-43e1-bacc-be1721af6796" config-ref="lending-leads" path="${sysApi.lenLead}">
+			<http:uri-params ><![CDATA[#[output application/java
+---
+{
+	"lead-id" : payload
+}]]]></http:uri-params>
+		</http:request>
+		<ee:transform doc:name="Transform Message" doc:id="11054c6c-bb19-4ca1-b5c4-69978eee499d" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+</mule>

@@ -1,0 +1,104 @@
+#%RAML 1.0
+title: forms-api
+
+traits:
+  formid:
+    queryParameters: 
+        formid:
+          description: unique formid
+          type: string
+          required: true
+
+/nous/mulesoftforms:
+  /generate:
+    description: "creates dymnamic link against uuid"
+    post:
+      body:
+        application/json:
+          example:
+            {
+              uuid: "655765767"
+            }
+      responses:
+        200:
+          body:
+            application/json:
+              example:
+                {
+    "link": "http://localhost:8085/nous/mulesoftforms/get?formid=Q0MllVSkJuRzlWaGVIanBwdGkwQnBQQWMNClhFWkRRbWlvVnRvVnFQalM3N0VtRzZTcFpUNnZPUEE2cEozejEwMD0NCj1sbDZQDQotLS0tLUVORCBQR1AgTUVTU0FHRS0tLS0tDQo="
+}
+                                            
+  /submit:
+    description: "creates documents in DB"
+    is: [formid]
+    post:      
+      body:
+        multipart/form-data:
+          
+
+      responses:
+        201:
+          body:
+            application/json:
+              example:
+                {
+                  "message": "document created successfully"
+                }
+
+  
+  /get:
+    description: "returns html form"
+    get:      
+      is: [formid]
+      responses:
+        200:
+          body:
+            text/html:  
+
+  /submit-document:
+    description: store html document in mongodb
+    post:
+      body:
+        multipart/form-data:
+
+      responses:
+        201:
+          body:
+            application/json:
+              example:
+                {
+                  "envelop-id" : "982h-f34rd-w4r34r-dw34rfd"
+                }
+  /generate/{envelop-id}:
+    description: creates a dynamic link with generic html template
+    post:
+      body:
+        application/json:
+          type: object
+          properties:
+            uuid:
+              type: string
+              required: true
+              example: "ncq39iecjdmkq"
+          example:
+            {
+              "uuid" : "hgyu38ubj2929hjd"
+            }
+      responses:
+        201:
+          body:
+            application/json:
+              example:
+                {
+                  "link" : "http://localhost:8081"
+                }
+
+  /get-form:
+    description: fetch form-data from mongodb
+    get:
+      is: [formid]
+      responses:
+        200:
+          body:
+            application/json:
+              

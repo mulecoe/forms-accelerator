@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:crypto="http://www.mulesoft.org/schema/mule/crypto"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/crypto http://www.mulesoft.org/schema/mule/crypto/current/mule-crypto.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<crypto:pgp-config name="Crypto_Pgp_Encryption" doc:name="Crypto Pgp" doc:id="cf0793fc-a75b-4586-a660-32b38877a236" publicKeyring="pgp-keys\public.asc.gpg" >
+		<crypto:pgp-key-infos >
+			<crypto:pgp-asymmetric-key-info keyId="DE1325C6" fingerprint="BC08154375EC3FC8B8B1D5E87D199A8FDE1325C6" />
+		</crypto:pgp-key-infos>
+	</crypto:pgp-config>
+	<crypto:pgp-config name="Crypto_Pgp_Decryption" doc:name="Crypto Pgp" doc:id="6f944dba-d702-46c7-9ea2-4ecb3306cf9a" privateKeyring="pgp-keys\private.asc.gpg" >
+		<crypto:pgp-key-infos >
+			<crypto:pgp-asymmetric-key-info keyId="DE1325C6" fingerprint="BC08154375EC3FC8B8B1D5E87D199A8FDE1325C6" passphrase="demo-pgp" />
+		</crypto:pgp-key-infos>
+	</crypto:pgp-config>
+	<flow name="pgp-encryption-flow" doc:id="75e88aa9-e68a-46b9-9e59-c9b2dc9330c7" >
+		<ee:transform doc:name="create payload" doc:id="afbc5757-8fb3-49e9-83ba-0d9ed242e8d2" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+'{"uniqueid" : "' ++ payload.'uuid' ++ '", ' ++ '"createdDate" : "' ++ now() ++ '", "tokentype" : "' ++ payload.tokentype ++ '", ' ++ '"envelop-id" : "' ++ payload.'envelop-id' ++ '"}'
+]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<ee:transform doc:name="to base 64" doc:id="b27d66a0-0f59-4ea8-a413-a4f87fbb902f">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+import * from dw::core::Binaries
+---
+toBase64(payload as Binary)]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<crypto:pgp-encrypt doc:name="Pgp encrypt" doc:id="899182f4-321c-4be1-a3e4-d8150994afc1" config-ref="Crypto_Pgp_Encryption" keyId="DE1325C6"/>
+		<ee:transform doc:name="linkid - binary to base 64" doc:id="33739e8f-6735-4a5e-93bc-f749baced90a" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+import * from dw::core::Binaries
+
+output application/java
+
+---
+
+toBase64(payload)]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="pgp-decryption-flow" doc:id="081893f1-c65e-4c32-a9ac-6a146418c039" >
+		<ee:transform doc:name="linkid to octet stream" doc:id="5ad47237-3b76-4b39-91c7-21f71676818f" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+import * from dw::core::Binaries
+
+output application/octet-stream
+---
+fromBase64(payload.uuid as String) ]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<crypto:pgp-decrypt doc:name="Pgp decrypt" doc:id="ae6188ad-d2df-4532-9bb2-307087356749" config-ref="Crypto_Pgp_Decryption"/>
+		<ee:transform doc:name="binary to original string" doc:id="b5e23bfa-43a3-4c65-97b4-b16a1b681413">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/octet-stream
+import * from dw::core::Binaries
+---
+fromBase64(payload)]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<ee:transform doc:name="Transform Message" doc:id="632c205d-fdb1-43e9-a160-5ef0555be711" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+read(payload, "application/json")]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+</mule>

@@ -1,0 +1,7 @@
+%dw 2.0
+
+type auto_ae7214c8_e40d_4061_843a_e7160179e393_Input_Variables_leaddata = {|
+  tokentype*: String, 
+  uuid*: Any
+|}
+
