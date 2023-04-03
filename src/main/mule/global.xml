@@ -14,9 +14,6 @@ http://www.mulesoft.org/schema/mule/api-gateway http://www.mulesoft.org/schema/m
 	<salesforce:sfdc-config name="Salesforce_Config" doc:name="Salesforce Config" doc:id="51136e45-b18c-4c7e-b7a1-9de905436268" >
 		<salesforce:basic-connection username="nousinfo2022@gmail.com" password="Nous@12345" securityToken="cumISqX1KcsqAnPuGsiOcSvk" />
 	</salesforce:sfdc-config>
-	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="62f7095f-9e0f-4104-884a-bfab375d680a">
-		<http:listener-connection host="0.0.0.0" port="${http.port}" />
-	</http:listener-config>
 	<configuration-properties doc:name="Configuration properties" doc:id="52be7296-38c4-40bc-8fa7-6525ba7043e6" file="config.yaml" />
 	<http:request-config name="request_api-config" doc:name="HTTP Request configuration" doc:id="fc961bf0-790e-47d4-ae84-5cf1cdf347a6" >
 		<http:request-connection host="#[vars.htmlDocument.host]" />
