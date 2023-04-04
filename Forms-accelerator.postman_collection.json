@@ -1,0 +1,176 @@
+{
+	"info": {
+		"_postman_id": "b0e3251f-3a42-4bd5-b7fa-03f4eae4545a",
+		"name": "Forms-accelerator",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "20809423"
+	},
+	"item": [
+		{
+			"name": "/mulesoftforms/submit-document",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "form-data",
+							"type": "file",
+							"src": [],
+							"disabled": true
+						},
+						{
+							"key": "html-file",
+							"type": "file",
+							"src": "/C:/Users/prakashkm/OneDrive - Nous Infosystems/Documents/templates/otp_generation_landingpage-customer-OB - Copy.html"
+						},
+						{
+							"key": "requestURL",
+							"value": "http://localhost:8081/api/nous/mulesoftforms/submit",
+							"type": "text",
+							"disabled": true
+						},
+						{
+							"key": "host",
+							"value": "lending-verification-api.sg-s1.cloudhub.io",
+							"type": "text"
+						},
+						{
+							"key": "port",
+							"value": "8081",
+							"type": "text"
+						},
+						{
+							"key": "path",
+							"value": "/loan/status/submit",
+							"type": "text"
+						},
+						{
+							"key": "protocol",
+							"value": "http",
+							"type": "text"
+						}
+					]
+				},
+				"url": {
+					"raw": "http://forms-accelerator-api.sg-s1.cloudhub.io/api/nous/mulesoftforms/submit-document",
+					"protocol": "http",
+					"host": [
+						"forms-accelerator-api",
+						"sg-s1",
+						"cloudhub",
+						"io"
+					],
+					"path": [
+						"api",
+						"nous",
+						"mulesoftforms",
+						"submit-document"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "/generate/{envelop-id}",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"uuid\": \"00Q2w00000S5EbuEAF\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://forms-accelerator-api.sg-s1.cloudhub.io/api/nous/mulesoftforms/generate/af49964b-13b0-4207-afe3-baef7be8efb4",
+					"protocol": "http",
+					"host": [
+						"forms-accelerator-api",
+						"sg-s1",
+						"cloudhub",
+						"io"
+					],
+					"path": [
+						"api",
+						"nous",
+						"mulesoftforms",
+						"generate",
+						"af49964b-13b0-4207-afe3-baef7be8efb4"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "/generate/{envelop-id} Copy",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"uuid\": \"00Q5i00000EBlHrEAL\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8081/api/nous/mulesoftforms/generate/c5611c4c-efb1-4897-97f7-7994cc13e9bc",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8081",
+					"path": [
+						"api",
+						"nous",
+						"mulesoftforms",
+						"generate",
+						"c5611c4c-efb1-4897-97f7-7994cc13e9bc"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "/generate/{envelop-id} Copy",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"uuid\": \"isuecfg79u\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://forms-accelerator-api.us-e2.cloudhub.io/api/nous/mulesoftforms/generate/c97d9328-8902-4d6a-b34f-fe731faf71f5",
+					"protocol": "http",
+					"host": [
+						"forms-accelerator-api",
+						"us-e2",
+						"cloudhub",
+						"io"
+					],
+					"path": [
+						"api",
+						"nous",
+						"mulesoftforms",
+						"generate",
+						"c97d9328-8902-4d6a-b34f-fe731faf71f5"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
