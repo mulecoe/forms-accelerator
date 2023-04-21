@@ -484,7 +484,7 @@ output application/json
 vars.decryptedFormID.uniqueid]]></ee:set-payload>
 			</ee:message>
 		</ee:transform>
-		<http:request method="GET" doc:name="lending leads" doc:id="31819a2a-e46c-43e1-bacc-be1721af6796" config-ref="lending-leads" path="${sysApi.lenLead}">
+		<http:request method="GET" doc:name="lending leads" doc:id="31819a2a-e46c-43e1-bacc-be1721af6796" config-ref="HTTP_Request_getLeads" path="${sysApi.getLeads}">
 			<http:uri-params ><![CDATA[#[output application/java
 ---
 {
