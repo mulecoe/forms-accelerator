@@ -8,6 +8,9 @@ http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/
 http://www.mulesoft.org/schema/mule/mongo http://www.mulesoft.org/schema/mule/mongo/current/mule-mongo.xsd
 http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd
 http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd">
+	<salesforce:sfdc-config name="Salesforce_Config-custOnbearding-smithbob" doc:name="Salesforce Config" doc:id="a5e7515d-137b-45ae-ad66-a0b20a5f7578" >
+		<salesforce:basic-connection username="smithbobforu@gmail.com" password="Nous@1234" securityToken="uH2N9tTXJ1Spy1FsMhNRG2zAN" />
+	</salesforce:sfdc-config>
 	<flow name="mulesoft-formsFlow" doc:id="4003096a-688a-4c92-891d-9f0875f9476b" >
 		<logger level="INFO" doc:name="Logger" doc:id="3603d304-00ca-4925-a1a8-3ffdef106ac9" message="#[attributes.queryParams]"/>
 		<ee:transform doc:name="save payload to formdata" doc:id="a7e3bbd6-5ef4-477b-b81f-ab5f216125b7" >
@@ -271,6 +274,50 @@ var addCode = (vars.leadData.Address.postalCode[0])  default ""
 											</ee:message>
 										</ee:transform>
 									</when>
+									<when expression="#[vars.decryptedFormID.'envelop-id' ~= &quot;419b64af-4ed3-48d5-98d2-8949e4d3faba&quot;]">
+										<ee:transform doc:name="Salesforce query" doc:id="55c64750-907a-421b-b4a1-dca4660258c8" >
+											<ee:message >
+												<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"query" : "SELECT Birthdate,Email,Id,LastName,Name,phone FROM Contact where Id=" ++ "'" ++ vars.decryptedFormID.uniqueid ++ "'"
+}]]></ee:set-payload>
+											</ee:message>
+										</ee:transform>
+										<flow-ref doc:name="Flow Reference" doc:id="950e96b8-2fe3-4c5d-818f-4b74d5057235" name="fetch-salesforce-contactObject-formsFlow" target="sfContact"/>
+										<ee:transform doc:name="Transform Message1" doc:id="d3072525-ff3d-498f-9226-3bb06a98e294" >
+											<ee:message >
+												<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+{
+	"uuid" : vars.decryptedFormID.uniqueid,
+	"envelop-id": vars.decryptedFormID.'envelop-id',
+	tokentype : "formsubmissionlink"
+}]]></ee:set-payload>
+											</ee:message>
+										</ee:transform>
+										<flow-ref doc:name="encrypt form idf payload" doc:id="4a6b1f36-ce95-4c6f-bc77-0349e9f69e25" name="pgp-encryption-flow" />
+										<ee:transform doc:name="create submission link" doc:id="610ee65d-b451-468f-8e3a-0120e18dac61" >
+											<ee:message >
+												<ee:set-payload ><![CDATA[%dw 2.0
+import * from dw::core::URL
+output application/java
+---
+vars.host ++ p('submitformpath') ++ '?formid=' ++ payload]]></ee:set-payload>
+											</ee:message>
+										</ee:transform>
+										<ee:transform doc:name="parse submission link" doc:id="ed8ce12f-99a0-4f28-9d7a-86f50c5a5e67" >
+											<ee:message >
+												<ee:set-payload ><![CDATA[%dw 2.0
+output text/plain
+import * from dw::core::Strings
+---
+((vars.htmlDocument.'html-file' as String replace ("#[payload]") with payload) replace ("#[vars.email]") with vars.sfContact.Email[0] default "") replace ("#[vars.phone]") with vars.sfContact.Phone[0] default ""]]></ee:set-payload>
+											</ee:message>
+										</ee:transform>
+									</when>
 									<otherwise >
 										<ee:transform doc:name="create new form idf payload" doc:id="dc5aa609-62df-4410-ac57-4c6f42c682fb" >
 											<ee:message >
@@ -413,6 +460,20 @@ output application/json
 output application/json
 ---
 payload filterObject($$ ~= "envelop-id")]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+		<flow name="fetch-salesforce-contactObject-formsFlow" doc:id="de66df85-3c17-4bb6-9038-178d8250d05d" >
+		<logger level="INFO" doc:name="Logger" doc:id="17d7bb2c-32d5-45ed-84de-82baf4225449" message="#[payload]"/>
+		<salesforce:query doc:name="Query" doc:id="cca51067-efa6-482b-a20a-685f2fe4eff4" config-ref="Salesforce_Config-custOnbearding-smithbob">
+			<salesforce:salesforce-query ><![CDATA[#[payload.query]]]></salesforce:salesforce-query>
+		</salesforce:query>
+		<ee:transform doc:name="Transform Message" doc:id="87dfc051-9cdf-4ef0-9620-13d042583e0c" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
 			</ee:message>
 		</ee:transform>
 	</flow>

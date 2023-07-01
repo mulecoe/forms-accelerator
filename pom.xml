@@ -20,36 +20,18 @@
 	<build>
 		<plugins>
 			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-clean-plugin</artifactId>
-				<version>3.0.0</version>
-			</plugin>
-			<plugin>
 				<groupId>org.mule.tools.maven</groupId>
 				<artifactId>mule-maven-plugin</artifactId>
 				<version>${mule.maven.plugin.version}</version>
 				<extensions>true</extensions>
 				<configuration>
-				<cloudHubDeployment>
-					<uri>https://anypoint.mulesoft.com</uri>
-					<muleVersion>4.4.0</muleVersion>
-					<connectedAppClientId>${connectedapp.clientid}</connectedAppClientId>
-					<connectedAppClientSecret>${connectedapp.clientsecret}</connectedAppClientSecret>
-					<connectedAppGrantType>${connectedapp.granttype}</connectedAppGrantType>
-					<applicationName>forms-accelerator-api</applicationName>
-					<environment>${app.env}</environment>
-					<region>${app.region}</region>
-					<workers>${app.workers}</workers>
-					<workerType>MICRO</workerType>
-					<objectStoreV2>true</objectStoreV2>
-				</cloudHubDeployment>
+					<classifier>mule-application</classifier>
 					<sharedLibraries>
 						<sharedLibrary>
 							<groupId>org.mongodb</groupId>
 							<artifactId>mongodb-driver-legacy</artifactId>
 						</sharedLibrary>
 					</sharedLibraries>
-					<classifier>mule-application</classifier>
 				</configuration>
 			</plugin>
 		</plugins>
@@ -83,6 +65,12 @@
 			<groupId>com.mulesoft.modules</groupId>
 			<artifactId>mule-cryptography-module</artifactId>
 			<version>1.3.13</version>
+			<classifier>mule-plugin</classifier>
+		</dependency>
+		<dependency>
+			<groupId>com.mulesoft.connectors</groupId>
+			<artifactId>mule-salesforce-connector</artifactId>
+			<version>10.15.5</version>
 			<classifier>mule-plugin</classifier>
 		</dependency>
 	</dependencies>
