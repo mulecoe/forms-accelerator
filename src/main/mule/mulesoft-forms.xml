@@ -281,7 +281,7 @@ var addCode = (vars.leadData.Address.postalCode[0])  default ""
 output application/json
 ---
 {
-	"query" : "SELECT Birthdate,Email,Id,LastName,Name,phone FROM Contact where Id=" ++ "'" ++ vars.decryptedFormID.uniqueid ++ "'"
+	"query" : "SELECT Email,Id,Name,phone FROM lead where Id=" ++ "'" ++ vars.decryptedFormID.uniqueid ++ "'"
 }]]></ee:set-payload>
 											</ee:message>
 										</ee:transform>
@@ -315,6 +315,54 @@ output text/plain
 import * from dw::core::Strings
 ---
 ((vars.htmlDocument.'html-file' as String replace ("#[payload]") with payload) replace ("#[vars.email]") with vars.sfContact.Email[0] default "") replace ("#[vars.phone]") with vars.sfContact.Phone[0] default ""]]></ee:set-payload>
+											</ee:message>
+										</ee:transform>
+									</when>
+									<when expression="#[vars.decryptedFormID.'envelop-id' ~= &quot;4c9ada4e-9aa4-4916-a82c-661d07b09449&quot;]">
+										<ee:transform doc:name="Transform Message" doc:id="d9ca4cda-4845-4684-a6b6-64261ea1ecc4" >
+											<ee:message >
+												<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	id : vars.decryptedFormID.uniqueid
+}]]></ee:set-payload>
+											</ee:message>
+										</ee:transform>
+										<flow-ref doc:name="Flow Reference" doc:id="cab5ed53-63f5-4e8d-ab20-fd8eabb41739" name="mulesoft-leadByid-imple" target="leadData"/>
+										<ee:transform doc:name="Transform Message" doc:id="32e3e4df-27cf-4e96-b5df-c31b6173ecd3" >
+											<ee:message >
+												<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+{
+	"uuid" : vars.decryptedFormID.uniqueid,
+	"envelop-id": vars.decryptedFormID.'envelop-id',
+	tokentype : "formsubmissionlink"
+}]]></ee:set-payload>
+											</ee:message>
+										</ee:transform>
+										<flow-ref doc:name="encrypt form idf payload" doc:id="5a3f720a-93c1-407a-9218-7d212b633274" name="pgp-encryption-flow" />
+										<ee:transform doc:name="create submission link" doc:id="d9619ee0-97d9-45b6-911d-c8e09ec9467b" >
+											<ee:message >
+												<ee:set-payload ><![CDATA[%dw 2.0
+import * from dw::core::URL
+output application/java
+---
+vars.host ++ p('submitformpath') ++ '?formid=' ++ payload]]></ee:set-payload>
+											</ee:message>
+										</ee:transform>
+										<ee:transform doc:name="parse submission link" doc:id="3c1c7d49-fe4f-4f79-936a-a5513c9d1f4f" >
+											<ee:message >
+												<ee:set-payload ><![CDATA[%dw 2.0
+output text/plain
+import * from dw::core::Strings
+var emailid = vars.leadData.Email default " "
+var firstname = vars.leadData.FirstName default " "
+var lastname = vars.leadData.LastName default " "
+var phonenumber = vars.leadData.Phone default " "
+---
+((vars.htmlDocument.'html-file' as String replace ("#[payload]") with payload) replace ("#[vars.email]") with emailid replace ("#[vars.phone]") with phonenumber replace ("#[vars.firstname]") with firstname replace ("#[vars.lastname]") with lastname)]]></ee:set-payload>
 											</ee:message>
 										</ee:transform>
 									</when>
@@ -560,5 +608,27 @@ output application/json
 payload]]></ee:set-payload>
 			</ee:message>
 		</ee:transform>
+	</flow>
+	<flow name="mulesoft-leadByid-imple" doc:id="f207793b-b808-4bb0-9bf8-ae7bbbf283b2" >
+		<logger level="INFO" doc:name="Logger" doc:id="0729a2d0-2d9a-4861-9974-70f058282e31" message='#["lead id " : payload.id]'/>
+		<http:request method="GET" doc:name="leadByLeadId" doc:id="07998bae-8d4d-43b1-8a30-3216b1e29570" config-ref="HTTP_Request_leadsByLeadId_wiseHawk" path="/salesforce/lead/{lead-id}">
+			<http:uri-params ><![CDATA[#[output application/java
+---
+{
+	"lead-id" : payload.id
+}]]]></http:uri-params>
+		</http:request>
+		<logger level="INFO" doc:name="Logger" doc:id="a10f6151-1ec4-4e1d-878c-235770db778d" message='#["leads data " : payload]'/>
+	</flow>
+	<flow name="mulesoft-leadsByid-imple" doc:id="a58faea0-d59e-4f97-8438-1a193cee6252" >
+		<logger level="INFO" doc:name="Logger" doc:id="d890e868-2609-47ab-a9bc-210dd35ca0fc" message='#["lead id " : payload.id]'/>
+		<http:request method="GET" doc:name="Request" doc:id="5ecea466-b6f5-4b81-86d7-25418e7f647c" config-ref="HTTP_Request_leadsByLeadId_wiseHawk" path="/salesforce/leads/{lead-id}">
+			<http:uri-params ><![CDATA[#[output application/java
+---
+{
+	"lead-id" : payload.id
+}]]]></http:uri-params>
+		</http:request>
+		<logger level="INFO" doc:name="Logger" doc:id="aec83715-56c3-4576-8240-e79085deb41f" message='#["leads data " : payload]'/>
 	</flow>
 </mule>

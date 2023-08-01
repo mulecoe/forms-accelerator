@@ -7,6 +7,9 @@ expirySeconds: "172800"
 http:
   port: "8081"
   
+api:
+  discovery: "18800628"
+  
 mongodb:
   connectionString: "mongodb+srv://prakashsr:rqEICMCTPE5y0P4M@fiscluster.ulxri.mongodb.net/generic-forms-accelerator?retryWrites=true&w=majority"
   formdataCollectionName : "forms-data"
@@ -20,3 +23,6 @@ sysApi:
   getLeads: "/customer/leads/{lead-id}"
   lenHost: "salesforce-lending-api.sg-s1.cloudhub.io"
   lenLead: "/lending/leads/{lead-id}"
+  leadByIdWise: "brooksbank-process-api.sg-s1.cloudhub.io"
+  
+  

@@ -21,5 +21,9 @@ http://www.mulesoft.org/schema/mule/api-gateway http://www.mulesoft.org/schema/m
 	<http:request-config name="lending-leads" doc:name="HTTP Request configuration" doc:id="2375887a-c964-4dde-b010-7a5809aa6f44" basePath="/api" >
 		<http:request-connection host="${sysApi.lenHost}" />
 	</http:request-config>
+	<api-gateway:autodiscovery apiId="${api.discovery}" ignoreBasePath="true" doc:name="API Autodiscovery" doc:id="38bde3d2-06cf-4028-b3a0-ed0f0cb6130c" flowRef="generic-form-api-main" />
+	<http:request-config name="HTTP_Request_leadsByLeadId_wiseHawk" doc:name="HTTP Request configuration" doc:id="f52df0bf-5e40-42f3-a447-bc916fbce974" basePath="/api" >
+		<http:request-connection host="${sysApi.leadByIdWise}" />
+	</http:request-config>
 	
 </mule>
