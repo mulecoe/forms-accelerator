@@ -329,7 +329,7 @@ output application/json
 }]]></ee:set-payload>
 											</ee:message>
 										</ee:transform>
-										<flow-ref doc:name="Flow Reference" doc:id="cab5ed53-63f5-4e8d-ab20-fd8eabb41739" name="mulesoft-leadByid-imple" target="leadData"/>
+										<flow-ref doc:name="get lead data" doc:id="cab5ed53-63f5-4e8d-ab20-fd8eabb41739" name="mulesoft-leadByid-imple" target="leadData"/>
 										<ee:transform doc:name="Transform Message" doc:id="32e3e4df-27cf-4e96-b5df-c31b6173ecd3" >
 											<ee:message >
 												<ee:set-payload ><![CDATA[%dw 2.0
@@ -363,6 +363,90 @@ var lastname = vars.leadData.LastName default " "
 var phonenumber = vars.leadData.Phone default " "
 ---
 ((vars.htmlDocument.'html-file' as String replace ("#[payload]") with payload) replace ("#[vars.email]") with emailid replace ("#[vars.phone]") with phonenumber replace ("#[vars.firstname]") with firstname replace ("#[vars.lastname]") with lastname)]]></ee:set-payload>
+											</ee:message>
+										</ee:transform>
+									</when>
+									<when expression="#[vars.decryptedFormID.'envelop-id' ~= &quot;8f897ed7-d9ef-4ad9-a7dc-ac434d3ebbb6&quot;]">
+										<ee:transform doc:name="Transform Message" doc:id="461f06dc-a782-4223-8356-b86504774682" >
+											<ee:message >
+												<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	id : vars.decryptedFormID.uniqueid
+}]]></ee:set-payload>
+											</ee:message>
+										</ee:transform>
+										<flow-ref doc:name="get extracted lead data" doc:id="dd1450ca-6861-4dbe-b4c5-c2500a1a6d89" name="mulesoft-leadsByid-imple" target="leadData"/>
+										<ee:transform doc:name="Transform Message1" doc:id="92a3a3cb-dd70-4d18-9b46-f3fdd94f1f22" >
+											<ee:message >
+												<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+{
+	"uuid" : vars.decryptedFormID.uniqueid,
+	"envelop-id": vars.decryptedFormID.'envelop-id',
+	tokentype : "formsubmissionlink"
+}]]></ee:set-payload>
+											</ee:message>
+										</ee:transform>
+										<flow-ref doc:name="encrypt form idf payload" doc:id="ce70592f-6c49-4f77-bb5a-ee427cfba638" name="pgp-encryption-flow" />
+										<ee:transform doc:name="create submission link" doc:id="d6c3f0b5-a1c2-4fa1-ba9b-c3ccb042bd05" >
+											<ee:message >
+												<ee:set-payload ><![CDATA[%dw 2.0
+import * from dw::core::URL
+output application/java
+---
+vars.host ++ p('submitformpath') ++ '?formid=' ++ payload]]></ee:set-payload>
+											</ee:message>
+										</ee:transform>
+										<ee:transform doc:name="parse submission link" doc:id="ec793370-0111-4f3f-87e9-2e2fd6518f3c" >
+											<ee:message >
+												<ee:set-payload ><![CDATA[%dw 2.0
+output text/plain
+import * from dw::core::Strings
+var emailid = vars.leadData.Email default " "
+var firstname = vars.leadData.FirstName default " "
+var lastname = vars.leadData.LastName default " "
+var phonenumber = vars.leadData.Phone default " "
+
+var ssn = vars.leadData.SSN__c default " "
+var dob = vars.leadData.Date_of_Birth__c default " "
+var gen = vars.leadData.Gender__c default " "
+var driverLicence = vars.leadData.DL_No__c default " "
+var address = vars.leadData.Address__c default " "
+var add = vars.leadData.Address__c splitBy  " "
+var addr = (
+   {
+      "street" : "#" ++ add[0] default " ",
+      city : add[-4] default " ",
+      state : add[-3] default " ",
+      country : add[-2] default " ",
+      zip : add[-1] default " "
+  })
+var strret = addr.street default " "
+var state = addr.state default " "
+var count = addr.country default " "
+var postal = addr.zip default " "  
+var city = addr.city default " "
+---
+
+((vars.htmlDocument.'html-file' as String 
+	replace ("#[payload]") with payload) 
+	replace ("#[vars.email]") with emailid 
+	replace ("#[vars.phone]") with phonenumber 
+	replace ("#[vars.firstname]") with firstname 
+	replace ("#[vars.lastname]") with lastname)
+	replace ("#[vars.ssn]") with ssn
+	replace ("#[vars.dob]") with dob
+	replace ("#[vars.gender]") with gen
+	replace ("#[vars.dl]") with driverLicence
+	replace ("#[vars.Address]") with address
+	replace ("#[vars.city]") with city
+	replace ("#[vars.state]") with state
+	replace ("#[vars.country]") with count
+	replace  ("#[vars.postalCode]") with postal
+	]]></ee:set-payload>
 											</ee:message>
 										</ee:transform>
 									</when>
@@ -622,7 +706,7 @@ payload]]></ee:set-payload>
 	</flow>
 	<flow name="mulesoft-leadsByid-imple" doc:id="a58faea0-d59e-4f97-8438-1a193cee6252" >
 		<logger level="INFO" doc:name="Logger" doc:id="d890e868-2609-47ab-a9bc-210dd35ca0fc" message='#["lead id " : payload.id]'/>
-		<http:request method="GET" doc:name="Request" doc:id="5ecea466-b6f5-4b81-86d7-25418e7f647c" config-ref="HTTP_Request_leadsByLeadId_wiseHawk" path="/salesforce/leads/{lead-id}">
+		<http:request method="GET" doc:name="extract ocr leads data" doc:id="5ecea466-b6f5-4b81-86d7-25418e7f647c" config-ref="HTTP_Request_leadsByLeadId_wiseHawk" path="/salesforce/leads/{lead-id}">
 			<http:uri-params ><![CDATA[#[output application/java
 ---
 {
