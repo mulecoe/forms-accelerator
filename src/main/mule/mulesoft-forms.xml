@@ -11,6 +11,9 @@ http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/fil
 	<salesforce:sfdc-config name="Salesforce_Config-custOnbearding-smithbob" doc:name="Salesforce Config" doc:id="a5e7515d-137b-45ae-ad66-a0b20a5f7578" >
 		<salesforce:basic-connection username="smithbobforu@gmail.com" password="Nous@1234" securityToken="uH2N9tTXJ1Spy1FsMhNRG2zAN" />
 	</salesforce:sfdc-config>
+	<salesforce:sfdc-config name="Salesforce_Config" doc:name="Salesforce Config" doc:id="2252ea84-490e-423f-830f-5d771d00b293" >
+		<salesforce:basic-connection username="dineshdini075@wise-hawk-jkfgkz.com" password="Demo@654321" securityToken="fPz2L3ozNkZTgasIGvapjjwP1" />
+	</salesforce:sfdc-config>
 	<flow name="mulesoft-formsFlow" doc:id="4003096a-688a-4c92-891d-9f0875f9476b" >
 		<logger level="INFO" doc:name="Logger" doc:id="3603d304-00ca-4925-a1a8-3ffdef106ac9" message="#[attributes.queryParams]"/>
 		<ee:transform doc:name="save payload to formdata" doc:id="a7e3bbd6-5ef4-477b-b81f-ab5f216125b7" >
@@ -597,7 +600,7 @@ payload filterObject($$ ~= "envelop-id")]]></ee:set-payload>
 	</flow>
 		<flow name="fetch-salesforce-contactObject-formsFlow" doc:id="de66df85-3c17-4bb6-9038-178d8250d05d" >
 		<logger level="INFO" doc:name="Logger" doc:id="17d7bb2c-32d5-45ed-84de-82baf4225449" message="#[payload]"/>
-		<salesforce:query doc:name="Query" doc:id="cca51067-efa6-482b-a20a-685f2fe4eff4" config-ref="Salesforce_Config-custOnbearding-smithbob">
+		<salesforce:query doc:name="Query" doc:id="cca51067-efa6-482b-a20a-685f2fe4eff4" config-ref="Salesforce_Config">
 			<salesforce:salesforce-query ><![CDATA[#[payload.query]]]></salesforce:salesforce-query>
 		</salesforce:query>
 		<ee:transform doc:name="Transform Message" doc:id="87dfc051-9cdf-4ef0-9620-13d042583e0c" >
